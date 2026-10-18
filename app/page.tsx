@@ -361,7 +361,7 @@ export default function Home() {
         aria-label="Primary navigation"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-charcoal/10 bg-white opacity-100 shadow-[0_-4px_16px_rgba(41,45,50,0.08)]"
       >
-        <div className="mx-auto flex max-w-2xl justify-start gap-2 px-5 py-3">
+        <div className="mx-auto flex max-w-2xl justify-between gap-2 px-5 py-3">
           <Link
             href="/"
             aria-current="page"
