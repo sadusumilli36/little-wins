@@ -43,12 +43,8 @@ export default function Home() {
         error: authError,
       } = await supabase.auth.getUser();
 
-      if (authError) {
-        setMessage(
-          authError.name === "AuthSessionMissingError"
-            ? "Sign in to see your tasks."
-            : authError.message,
-        );
+      if (authError && authError.name !== "AuthSessionMissingError") {
+        setMessage(authError.message);
         setLoading(false);
         return;
       }
@@ -89,6 +85,7 @@ export default function Home() {
       return;
     }
 
+    setTasks([]);
     router.replace("/auth");
     router.refresh();
   }
@@ -166,7 +163,14 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-sky-blue pb-28 text-charcoal">
       <div className="mx-auto min-h-screen w-full max-w-2xl px-5 py-8 sm:px-8">
-        <header className="flex flex-col items-center gap-4 text-center">
+        <header className="relative flex flex-col items-center gap-4 pt-14 text-center sm:pt-0">
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="absolute left-0 top-0 min-h-11 rounded-full bg-white px-4 py-2 text-sm font-bold text-royal-blue shadow-sm transition hover:bg-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
+          >
+            Log out
+          </button>
           <Image
             src="/logo.png"
             alt="Little Wins"
@@ -175,13 +179,6 @@ export default function Home() {
             priority
             className="h-auto w-[570px] max-w-full"
           />
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            className="min-h-11 rounded-full bg-white px-5 py-2 text-sm font-bold text-royal-blue shadow-sm transition hover:bg-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
-          >
-            Log out
-          </button>
         </header>
 
         <section
@@ -198,7 +195,9 @@ export default function Home() {
           <div className="mt-5 space-y-4 text-left">
             {loading && <EmptyState>Loading your tasks...</EmptyState>}
             {!loading && message && <EmptyState>{message}</EmptyState>}
-            {!loading && !message && upcomingTasks.length === 0 && (
+            {!loading &&
+              !message &&
+              upcomingTasks.length === 0 && (
               <EmptyState>There are no tasks!</EmptyState>
             )}
             {!loading &&
@@ -280,7 +279,7 @@ export default function Home() {
 
       <nav
         aria-label="Primary navigation"
-        className="fixed inset-x-0 bottom-0 border-t border-charcoal/10 bg-white/95 shadow-[0_-4px_16px_rgba(41,45,50,0.08)] backdrop-blur"
+        className="fixed inset-x-0 bottom-0 border-t border-charcoal/10 bg-white shadow-[0_-4px_16px_rgba(41,45,50,0.08)]"
       >
         <div className="mx-auto flex max-w-2xl justify-start gap-2 px-5 py-3">
           <Link

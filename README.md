@@ -10,10 +10,9 @@ users must be signed in before their tasks can be loaded.
 ## Pages
 
 - `/` shows upcoming tasks and subtasks.
-- `/progress` previews task progress tracks with mock data. The page displays
-  completed subtasks but does not change them; the other task screen owns that
-  interaction. Replace `app/progress/progress-mock.ts` with backend data when it
-  is ready. Add the finish-line image at
+- `/progress` shows progress tracks for the signed-in user's non-completed
+  tasks. It reads tasks and subtasks from Supabase; the home page owns the
+  subtask interaction. Add the finish-line image at
   `public/images/finish-flag.png` to replace the placeholder.
 
 ## Getting Started

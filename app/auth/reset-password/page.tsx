@@ -61,7 +61,13 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    await supabase.auth.signOut();
+    const { error: signOutError } = await supabase.auth.signOut();
+    if (signOutError) {
+      setError(signOutError.message);
+      setIsSubmitting(false);
+      return;
+    }
+
     setMessage("Your password has been updated. You can now log in.");
     setPassword("");
     setConfirmPassword("");

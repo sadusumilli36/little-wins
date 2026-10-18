@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import type { TaskProgress } from "./progress-mock";
+import type { TaskProgress } from "./progress-types";
 
 const FLAG_SRC = "/images/finish-flag.png";
 const CHARCOAL = "#292d32";

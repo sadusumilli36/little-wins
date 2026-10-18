@@ -1,13 +1,84 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createClient } from "@/lib/supabase";
 import ProgressTrack from "./ProgressTrack";
-import { MOCK_TASKS } from "./progress-mock";
+import type { SubtaskProgress, TaskProgress } from "./progress-types";
+
+type SupabaseTask = {
+  id: string;
+  name: string;
+  character_id: string | null;
+  subtasks: SubtaskProgress[];
+};
 
 export default function ProgressPage() {
+  const router = useRouter();
+  const [tasks, setTasks] = useState<TaskProgress[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [finishedQueue, setFinishedQueue] = useState<string[]>([]);
+
+  useEffect(() => {
+    async function loadProgress() {
+      const supabase = createClient();
+
+      if (!supabase) {
+        setMessage("Supabase is not configured yet.");
+        setLoading(false);
+        return;
+      }
+
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError && authError.name !== "AuthSessionMissingError") {
+        setMessage(
+          authError.message,
+        );
+        setLoading(false);
+        return;
+      }
+
+      if (!user) {
+        router.replace("/auth");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("id, name, character_id, subtasks(id, description, completed, display_order)")
+        .neq("status", "completed")
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        setMessage(error.message);
+      } else {
+        const progressTasks = ((data ?? []) as SupabaseTask[]).map((task) => ({
+          id: task.id,
+          name: task.name,
+          characterName: task.character_id
+            ? task.character_id.replaceAll("-", " ")
+            : "Little Wins",
+          characterImage: task.character_id
+            ? `/characters/${task.character_id}.png`
+            : "/characters/default.png",
+          subtasks: task.subtasks
+            .slice()
+            .sort((a, b) => a.display_order - b.display_order),
+        }));
+        setTasks(progressTasks);
+      }
+      setLoading(false);
+    }
+
+    void loadProgress();
+  }, [router]);
 
   const handleFinish = useCallback((taskId: string) => {
     setFinishedQueue((queue) =>
@@ -15,8 +86,8 @@ export default function ProgressPage() {
     );
   }, []);
 
-  const finishedTask = MOCK_TASKS.find((task) => task.id === finishedQueue[0]);
-  const visibleTasks = MOCK_TASKS.filter(
+  const finishedTask = tasks.find((task) => task.id === finishedQueue[0]);
+  const visibleTasks = tasks.filter(
     (task) => !dismissed.includes(task.id),
   );
 
@@ -50,7 +121,19 @@ export default function ProgressPage() {
             />
           ))}
 
-          {visibleTasks.length === 0 && (
+          {loading && (
+            <p className="rounded-3xl bg-white px-5 py-8 text-center text-base shadow-sm">
+              Loading your progress...
+            </p>
+          )}
+
+          {!loading && message && (
+            <p className="rounded-3xl bg-white px-5 py-8 text-center text-base shadow-sm">
+              {message}
+            </p>
+          )}
+
+          {!loading && !message && visibleTasks.length === 0 && (
             <p className="rounded-3xl bg-white px-5 py-8 text-center text-base shadow-sm">
               No tracks right now. Add a task to start a new one.
             </p>
@@ -60,7 +143,7 @@ export default function ProgressPage() {
 
       <nav
         aria-label="Primary navigation"
-        className="fixed inset-x-0 bottom-0 border-t border-charcoal/10 bg-white/95 shadow-[0_-4px_16px_rgba(41,45,50,0.08)] backdrop-blur"
+        className="fixed inset-x-0 bottom-0 border-t border-charcoal/10 bg-white shadow-[0_-4px_16px_rgba(41,45,50,0.08)]"
       >
         <div className="mx-auto flex max-w-2xl justify-start gap-2 px-5 py-3">
           <Link
