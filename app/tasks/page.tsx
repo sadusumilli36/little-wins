@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Avatar, { AVATARS, type AvatarId, getAvatar } from "@/components/Avatar";
 import { createClient } from "@/lib/supabase";
+import ProgressFlagIcon from "../components/ProgressFlagIcon";
 
 type Subtask = {
   id: string;
@@ -135,10 +136,10 @@ export default function TasksPage() {
 
     const nextStatus =
       task.status === "completed" ? "in_progress" : "completed";
-    const { error } = await supabase
-      .from("tasks")
-      .update({ status: nextStatus })
-      .eq("id", task.id);
+    const { error } = await supabase.rpc("set_task_status_with_subtasks", {
+      p_task_id: task.id,
+      p_status: nextStatus,
+    });
 
     if (error) {
       setActionError(`Could not update "${task.name}": ${error.message}`);
@@ -148,7 +149,19 @@ export default function TasksPage() {
     setTasks((current) =>
       sortTasks(
         current.map((item) =>
-          item.id === task.id ? { ...item, status: nextStatus } : item,
+          item.id === task.id
+            ? {
+                ...item,
+                status: nextStatus,
+                subtasks:
+                  nextStatus === "completed"
+                    ? item.subtasks.map((subtask) => ({
+                        ...subtask,
+                        completed: true,
+                      }))
+                    : item.subtasks,
+              }
+            : item,
         ),
       ),
     );
@@ -276,7 +289,6 @@ export default function TasksPage() {
       .map((description) => description.trim())
       .filter(Boolean);
     let insertedSubtasks: Subtask[] = [];
-
     if (descriptions.length > 0) {
       const { data, error: subtaskError } = await supabase
         .from("subtasks")
@@ -303,7 +315,6 @@ export default function TasksPage() {
         );
         return false;
       }
-
       insertedSubtasks = (data ?? []) as Subtask[];
     }
 
@@ -624,7 +635,9 @@ function NewTaskDialog({
       const supabase = createClient();
       const {
         data: { session },
-      } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+        } = supabase
+          ? await supabase.auth.getSession()
+          : { data: { session: null } };
       if (!session?.access_token) {
         setError("Your session has expired. Please sign in again.");
         return;
@@ -907,7 +920,9 @@ function PrimaryNavigation() {
           href="/progress"
           className="flex min-h-11 min-w-20 flex-col items-center justify-center gap-1 rounded-2xl px-4 text-sm font-bold text-charcoal/70 transition hover:bg-sky-blue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
         >
-          <span aria-hidden="true" className="text-2xl leading-5">●</span>
+          <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center leading-none">
+            <ProgressFlagIcon />
+          </span>
           Progress
         </Link>
       </div>

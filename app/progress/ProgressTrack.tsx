@@ -5,10 +5,11 @@ import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
 import type { TaskProgress } from "./progress-types";
 
-const FLAG_SRC = "/images/finish-flag.png";
 const CHARCOAL = "#292d32";
 const GOLD = "#daa668";
-const GREEN = "#3e623c";
+const CHECKPOINT_BLACK = "#000000";
+const CHECKPOINT_YELLOW = "#FBD000";
+const CHECKPOINT_GREEN = "#43B047";
 const WIDTH = 300;
 const HEIGHT = 140;
 const LEFT = 26;
@@ -16,11 +17,25 @@ const RIGHT = 44;
 const MID = 68;
 const AMPLITUDE = 22;
 const WAVES = 2;
+const CHARACTER_LANE_OFFSET = 34;
 
 function pointAt(progress: number) {
   const x = LEFT + progress * (WIDTH - LEFT - RIGHT);
   const y = MID - AMPLITUDE * Math.sin(progress * WAVES * 2 * Math.PI);
   return { x, y };
+}
+
+function normalOffsetAt(progress: number) {
+  const tangentX = WIDTH - LEFT - RIGHT;
+  const tangentY =
+    -AMPLITUDE * WAVES * 2 * Math.PI *
+    Math.cos(progress * WAVES * 2 * Math.PI);
+  const tangentLength = Math.hypot(tangentX, tangentY);
+
+  return {
+    x: (tangentY / tangentLength) * CHARACTER_LANE_OFFSET,
+    y: (-tangentX / tangentLength) * CHARACTER_LANE_OFFSET,
+  };
 }
 
 const TRACK_PATH = Array.from({ length: 121 }, (_, index) => {
@@ -73,29 +88,14 @@ function useAnimatedProgress(target: number) {
 }
 
 function FinishFlag() {
-  const [failed, setFailed] = useState(false);
-
-  if (failed) {
-    return (
-      <span
-        className="flex h-full w-full items-center justify-center rounded-md border-2 border-dashed border-royal-blue bg-white/80 text-xl"
-        title="Add your flag image at public/images/finish-flag.png"
-        aria-label="Finish line placeholder"
-      >
-        🏁
-      </span>
-    );
-  }
-
   return (
     <Image
-      src={FLAG_SRC}
-      alt="Finish line"
-      width={44}
-      height={44}
+      src="/finish-character-flag.png"
+      alt="Mascot holding a checkered finish flag"
+      width={400}
+      height={300}
       unoptimized
       className="h-full w-full object-contain"
-      onError={() => setFailed(true)}
     />
   );
 }
@@ -111,10 +111,20 @@ export default function ProgressTrack({
   const completedCount = task.subtasks.filter(
     (subtask) => subtask.completed,
   ).length;
+  const furthestCompletedIndex = task.subtasks.reduce(
+    (furthest, subtask, index) => (subtask.completed ? index : furthest),
+    -1,
+  );
+  const firstIncompleteIndex = task.subtasks.findIndex(
+    (subtask) => !subtask.completed,
+  );
+  const sequentialCompletedCount =
+    firstIncompleteIndex === -1 ? total : firstIncompleteIndex;
   const isComplete = total > 0 && completedCount === total;
-  const target = total > 0 ? completedCount / total : 0;
+  const target = sequentialCompletedCount / (total + 1);
   const animatedProgress = useAnimatedProgress(target);
   const character = pointAt(animatedProgress);
+  const characterOffset = normalOffsetAt(animatedProgress);
   const finishPoint = pointAt(1);
   const notified = useRef(false);
   const arrived = Math.abs(animatedProgress - target) < 0.001;
@@ -147,19 +157,38 @@ export default function ProgressTrack({
           <path
             d={TRACK_PATH}
             fill="none"
-            stroke={CHARCOAL}
-            strokeWidth={5}
+            stroke="#7c7d7f"
+            strokeWidth={18}
             strokeLinecap="round"
             strokeLinejoin="round"
+            opacity={0.95}
+          />
+          <path
+            d={TRACK_PATH}
+            fill="none"
+            stroke="#d7d5cf"
+            strokeWidth={12}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d={TRACK_PATH}
+            fill="none"
+            stroke="#f4f1eb"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray="10 11"
+            opacity={0.9}
           />
         </svg>
 
         <div
-          className="pointer-events-none absolute z-10 h-11 w-11"
+          className="pointer-events-none absolute z-10 h-[84px] w-28"
           style={{
             left: toPercent(finishPoint.x, WIDTH),
             top: toPercent(finishPoint.y, HEIGHT),
-            transform: "translate(2px, -92%)",
+            transform: "translate(-65%, -95%)",
           }}
         >
           <FinishFlag />
@@ -179,6 +208,11 @@ export default function ProgressTrack({
         {task.subtasks.map((subtask, index) => {
           const position = (index + 1) / (total + 1);
           const point = pointAt(position);
+          const checkpointColor = subtask.completed
+            ? CHECKPOINT_GREEN
+            : index < furthestCompletedIndex
+              ? CHECKPOINT_YELLOW
+              : CHECKPOINT_BLACK;
           const isActive = activeIndex === index;
           const tooltipOffset =
             position < 0.2 ? "-15%" : position > 0.8 ? "-85%" : "-50%";
@@ -208,7 +242,7 @@ export default function ProgressTrack({
                 <span
                   className="flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold leading-none text-white"
                   style={{
-                    backgroundColor: subtask.completed ? GREEN : CHARCOAL,
+                    backgroundColor: checkpointColor,
                   }}
                 >
                   {subtask.completed ? "✓" : ""}
@@ -240,9 +274,9 @@ export default function ProgressTrack({
           aria-hidden="true"
           className="pointer-events-none absolute z-10 h-11 w-11 overflow-hidden rounded-full border border-charcoal/30 bg-white shadow"
           style={{
-            left: toPercent(character.x, WIDTH),
-            top: toPercent(character.y, HEIGHT),
-            transform: "translate(-50%, -78%)",
+            left: toPercent(character.x + characterOffset.x, WIDTH),
+            top: toPercent(character.y + characterOffset.y, HEIGHT),
+            transform: "translate(-50%, -50%)",
           }}
         >
           <Avatar id={task.characterId} className="h-full w-full object-contain" />

@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import ProgressFlagIcon from "./components/ProgressFlagIcon";
 import { createClient } from "@/lib/supabase";
 
 type Subtask = {
@@ -142,17 +143,33 @@ export default function Home() {
     }
 
     const nextStatus = task.status === "completed" ? "in_progress" : "completed";
-    const { error } = await supabase
-      .from("tasks")
-      .update({ status: nextStatus })
-      .eq("id", task.id);
+    const { error } = await supabase.rpc("set_task_status_with_subtasks", {
+      p_task_id: task.id,
+      p_status: nextStatus,
+    });
 
     if (error) {
       setMessage(error.message);
       return;
     }
 
-    setTasks((current) => current.filter((item) => item.id !== task.id));
+    setTasks((current) =>
+      current.map((item) =>
+        item.id === task.id
+          ? {
+              ...item,
+              status: nextStatus,
+              subtasks:
+                nextStatus === "completed"
+                  ? item.subtasks.map((subtask) => ({
+                      ...subtask,
+                      completed: true,
+                    }))
+                  : item.subtasks,
+            }
+          : item,
+      ),
+    );
   }
 
   async function toggleSubtask(task: Task, subtask: Subtask) {
@@ -348,7 +365,9 @@ export default function Home() {
             href="/progress"
             className="flex min-h-11 min-w-20 flex-col items-center justify-center gap-1 rounded-2xl px-5 text-sm font-bold text-charcoal/70 transition hover:bg-sky-blue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
           >
-            <span aria-hidden="true" className="text-2xl leading-5">●</span>
+            <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center leading-none">
+              <ProgressFlagIcon />
+            </span>
             Progress
           </Link>
         </div>
