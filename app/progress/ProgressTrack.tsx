@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import Avatar, { getAvatar } from "@/components/Avatar";
 import type { TaskProgress } from "./progress-types";
 
 const FLAG_SRC = "/images/finish-flag.png";

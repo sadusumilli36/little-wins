@@ -16,8 +16,10 @@ means users must be signed in before their tasks can be loaded.
 - `/progress` shows progress tracks from Supabase. It displays completed
   subtasks but does not change them; the task screen owns that interaction.
   Dismissing a finished track is saved in browser storage for the signed-in
-  user. Add the finish-line image at `public/images/finish-flag.png` to replace
-  its placeholder.
+  user. The selectable transparent character PNGs live in `public/avatars/`;
+  update their paths in `components/Avatar.tsx` when replacing them. Add the
+  finish-line image at `public/images/finish-flag.png` to replace its
+  placeholder.
 
 ## Getting Started
 

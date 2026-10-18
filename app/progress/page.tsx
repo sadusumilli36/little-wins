@@ -11,6 +11,7 @@ type SupabaseTask = {
   id: string;
   name: string;
   character_id: string | null;
+  character_color: string | null;
   subtasks: SubtaskProgress[];
 };
 
@@ -18,16 +19,22 @@ export default function ProgressPage() {
   const router = useRouter();
   const [tasks, setTasks] = useState<TaskProgress[]>([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
+  const [userId, setUserId] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [finishedQueue, setFinishedQueue] = useState<string[]>([]);
 
   useEffect(() => {
-    async function loadProgress() {
-      const supabase = createClient();
+    let active = true;
 
+    async function loadProgress(showLoading: boolean) {
+      if (showLoading) setLoading(true);
+      setError(null);
+      const supabase = createClient();
       if (!supabase) {
-        setMessage("Supabase is not configured yet.");
+        setError("Supabase is not configured yet.");
         setLoading(false);
         return;
       }
@@ -37,48 +44,91 @@ export default function ProgressPage() {
         error: authError,
       } = await supabase.auth.getUser();
 
-      if (authError && authError.name !== "AuthSessionMissingError") {
-        setMessage(
-          authError.message,
-        );
+      if (!active) return;
+      if (authError) {
+        setError(authError.message);
         setLoading(false);
         return;
       }
-
       if (!user) {
         router.replace("/auth");
         return;
       }
 
-      const { data, error } = await supabase
+      let dismissedTaskIds: string[] = [];
+      try {
+        const savedDismissals = window.localStorage.getItem(
+          `little-wins:progress-dismissed:${user.id}`,
+        );
+        const parsed: unknown = savedDismissals ? JSON.parse(savedDismissals) : [];
+        if (
+          !Array.isArray(parsed) ||
+          !parsed.every((taskId): taskId is string => typeof taskId === "string")
+        ) {
+          throw new Error("Saved progress dismissals have an invalid format.");
+        }
+        dismissedTaskIds = parsed;
+      } catch (storageError) {
+        setError(
+          `Could not read saved progress dismissals: ${
+            storageError instanceof Error
+              ? storageError.message
+              : "browser storage is unavailable"
+          }`,
+        );
+        setLoading(false);
+        return;
+      }
+
+      const { data, error: queryError } = await supabase
         .from("tasks")
-        .select("id, name, character_id, subtasks(id, description, completed, display_order)")
-        .neq("status", "completed")
+        .select(
+          "id, name, character_id, character_color, subtasks(id, description, completed, display_order)",
+        )
         .order("created_at", { ascending: true });
 
-      if (error) {
-        setMessage(error.message);
-      } else {
-        const progressTasks = ((data ?? []) as SupabaseTask[]).map((task) => ({
+      if (!active) return;
+      if (queryError) {
+        setError(queryError.message);
+        setLoading(false);
+        return;
+      }
+
+      setUserId(user.id);
+      setDismissed(dismissedTaskIds);
+      setTasks(
+        ((data ?? []) as SupabaseTask[]).map((task) => ({
           id: task.id,
           name: task.name,
-          characterName: task.character_id
-            ? task.character_id.replaceAll("-", " ")
-            : "Little Wins",
-          characterImage: task.character_id
-            ? `/characters/${task.character_id}.png`
-            : "/characters/default.png",
+          characterId: task.character_id,
+          characterColor: task.character_color,
           subtasks: task.subtasks
             .slice()
             .sort((a, b) => a.display_order - b.display_order),
-        }));
-        setTasks(progressTasks);
-      }
+        })),
+      );
+      setError(null);
       setLoading(false);
     }
 
-    void loadProgress();
-  }, [router]);
+    void loadProgress(true);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void loadProgress(false);
+      }
+    };
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      active = false;
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [retry, router]);
+  const [message, setMessage] = useState<string | null>(null);
+  const [dismissed, setDismissed] = useState<string[]>([]);
+  const [finishedQueue, setFinishedQueue] = useState<string[]>([]);
 
   const handleFinish = useCallback((taskId: string) => {
     setFinishedQueue((queue) =>
@@ -113,7 +163,26 @@ export default function ProgressPage() {
           aria-label="Task progress tracks"
           className="mx-auto mt-8 flex max-w-xl flex-col gap-8"
         >
-          {visibleTasks.map((task) => (
+          {loading && (
+            <p role="status" className="rounded-3xl bg-white px-5 py-8 text-center text-base shadow-sm">
+              Loading your progress...
+            </p>
+          )}
+
+          {!loading && error && (
+            <div role="alert" className="rounded-3xl bg-white px-5 py-8 text-center text-base shadow-sm">
+              <p>{error}</p>
+              <button
+                type="button"
+                onClick={() => setRetry((current) => current + 1)}
+                className="mt-4 min-h-11 rounded-full bg-royal-blue px-5 py-2 font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+
+          {!loading && !error && visibleTasks.map((task) => (
             <ProgressTrack
               key={task.id}
               task={task}
@@ -121,19 +190,13 @@ export default function ProgressPage() {
             />
           ))}
 
-          {loading && (
-            <p className="rounded-3xl bg-white px-5 py-8 text-center text-base shadow-sm">
-              Loading your progress...
+          {notice && (
+            <p role="status" className="rounded-2xl bg-white px-4 py-3 text-center text-sm">
+              {notice}
             </p>
           )}
 
-          {!loading && message && (
-            <p className="rounded-3xl bg-white px-5 py-8 text-center text-base shadow-sm">
-              {message}
-            </p>
-          )}
-
-          {!loading && !message && visibleTasks.length === 0 && (
+          {!loading && !error && visibleTasks.length === 0 && (
             <p className="rounded-3xl bg-white px-5 py-8 text-center text-base shadow-sm">
               No tracks right now. Add a task to start a new one.
             </p>
