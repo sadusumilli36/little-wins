@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ProfileNavLink from "@/components/ProfileNavLink";
 import { createClient } from "@/lib/supabase";
+import ProgressFlagIcon from "../components/ProgressFlagIcon";
 import ProgressTrack from "./ProgressTrack";
 import type { SubtaskProgress, TaskProgress } from "./progress-types";
 
@@ -143,7 +144,7 @@ export default function ProgressPage() {
   };
 
   return (
-    <main className="min-h-screen bg-sky-blue pb-28 text-charcoal">
+    <main className="min-h-screen bg-sky-blue pb-[calc(7rem+env(safe-area-inset-bottom))] text-charcoal">
       <div className="mx-auto min-h-screen w-full max-w-2xl px-5 py-8 sm:px-8">
         <header className="text-center">
           <h1 className="inline-flex rounded-full bg-coin-gold px-8 py-3 text-2xl font-bold shadow-sm">
@@ -195,7 +196,7 @@ export default function ProgressPage() {
 
       <nav
         aria-label="Primary navigation"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-charcoal/10 bg-white opacity-100 shadow-[0_-4px_16px_rgba(41,45,50,0.08)]"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-charcoal/10 bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(41,45,50,0.08)]"
       >
         <div className="mx-auto flex max-w-2xl justify-between gap-2 px-5 py-3">
           <Link
@@ -217,7 +218,9 @@ export default function ProgressPage() {
             aria-current="page"
             className="flex min-h-11 min-w-20 flex-col items-center justify-center gap-1 rounded-2xl px-5 text-sm font-bold text-royal-blue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
           >
-            <span aria-hidden="true" className="text-2xl leading-5">●</span>
+            <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center leading-none">
+              <ProgressFlagIcon />
+            </span>
             Progress
           </Link>
           <ProfileNavLink />
