@@ -29,6 +29,8 @@ export default function Home() {
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    let active = true;
+
     async function loadTasks() {
       const supabase = createClient();
 
@@ -38,10 +40,34 @@ export default function Home() {
         return;
       }
 
+      const sessionCheck = supabase.auth.getSession();
+      const timeout = new Promise<never>((_, reject) => {
+        window.setTimeout(
+          () => reject(new Error("Session check timed out.")),
+          5000,
+        );
+      });
+
+      let sessionResult;
+      try {
+        sessionResult = await Promise.race([sessionCheck, timeout]);
+      } catch (error) {
+        if (!active) return;
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "Could not verify your account.",
+        );
+        window.location.replace("/auth");
+        return;
+      }
+
       const {
-        data: { user },
+        data: { session },
         error: authError,
-      } = await supabase.auth.getUser();
+      } = sessionResult;
+
+      if (!active) return;
 
       if (authError && authError.name !== "AuthSessionMissingError") {
         setMessage(authError.message);
@@ -49,8 +75,8 @@ export default function Home() {
         return;
       }
 
-      if (!user) {
-        router.replace("/auth");
+      if (!session) {
+        window.location.replace("/auth");
         return;
       }
 
@@ -70,6 +96,9 @@ export default function Home() {
     }
 
     void loadTasks();
+    return () => {
+      active = false;
+    };
   }, [router]);
 
   async function signOut() {
@@ -94,6 +123,16 @@ export default function Home() {
     () => tasks.filter((task) => task.status !== "completed"),
     [tasks],
   );
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-sky-blue px-5 text-center text-charcoal">
+        <p className="rounded-3xl bg-white px-6 py-5 shadow-sm">
+          Checking your account...
+        </p>
+      </main>
+    );
+  }
 
   async function toggleTask(task: Task) {
     const supabase = createClient();
@@ -287,7 +326,7 @@ export default function Home() {
 
       <nav
         aria-label="Primary navigation"
-        className="fixed inset-x-0 bottom-0 border-t border-charcoal/10 bg-white shadow-[0_-4px_16px_rgba(41,45,50,0.08)]"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-charcoal/10 bg-white opacity-100 shadow-[0_-4px_16px_rgba(41,45,50,0.08)]"
       >
         <div className="mx-auto flex max-w-2xl justify-start gap-2 px-5 py-3">
           <Link

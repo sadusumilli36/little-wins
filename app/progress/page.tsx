@@ -126,6 +126,9 @@ export default function ProgressPage() {
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [retry, router]);
+  const [message, setMessage] = useState<string | null>(null);
+  const [dismissed, setDismissed] = useState<string[]>([]);
+  const [finishedQueue, setFinishedQueue] = useState<string[]>([]);
 
   const handleFinish = useCallback((taskId: string) => {
     setFinishedQueue((queue) =>
@@ -140,26 +143,8 @@ export default function ProgressPage() {
 
   const closePopup = () => {
     if (!finishedTask) return;
-    const nextDismissed = [...new Set([...dismissed, finishedTask.id])];
-    setDismissed(nextDismissed);
+    setDismissed((current) => [...current, finishedTask.id]);
     setFinishedQueue((queue) => queue.slice(1));
-
-    if (!userId) return;
-    try {
-      window.localStorage.setItem(
-        `little-wins:progress-dismissed:${userId}`,
-        JSON.stringify(nextDismissed),
-      );
-      setNotice(null);
-    } catch (storageError) {
-      setNotice(
-        `The track was hidden for now, but its dismissal could not be saved: ${
-          storageError instanceof Error
-            ? storageError.message
-            : "browser storage is unavailable"
-        }`,
-      );
-    }
   };
 
   return (
@@ -221,7 +206,7 @@ export default function ProgressPage() {
 
       <nav
         aria-label="Primary navigation"
-        className="fixed inset-x-0 bottom-0 border-t border-charcoal/10 bg-white shadow-[0_-4px_16px_rgba(41,45,50,0.08)]"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-charcoal/10 bg-white opacity-100 shadow-[0_-4px_16px_rgba(41,45,50,0.08)]"
       >
         <div className="mx-auto flex max-w-2xl justify-start gap-2 px-5 py-3">
           <Link
