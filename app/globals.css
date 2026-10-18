@@ -1,0 +1,43 @@
+@import "tailwindcss";
+@import "@fontsource/opendyslexic/400.css";
+@import "@fontsource/opendyslexic/700.css";
+
+:root {
+  --background: #d3e6ff;
+  --foreground: #292d32;
+}
+
+@theme inline {
+  --color-sky-blue: #d3e6ff;
+  --color-coin-gold: #daa668;
+  --color-charcoal: #292d32;
+  --color-forest-green: #3e623c;
+  --color-royal-blue: #2d4b8a;
+  --color-sage-gray: #afbAB2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "OpenDyslexic", sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
