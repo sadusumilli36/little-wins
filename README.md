@@ -1,60 +1,120 @@
-Little Wins is a Next.js app with Supabase-backed tasks and subtasks.
+# Little Wins
+
+Little Wins is a task-management app that helps users break everyday tasks
+into manageable steps and track their progress through a Mario Kart-inspired
+experience.
+
+## Inspiration
+
+When we thought of 2016, the first thing that came to our minds was Mario
+Kart. We also thought about how many people struggle to manage their everyday
+tasks. Traditional to-do lists allow users to enter their tasks, but they do
+not often help users plan the steps required or track their progress. As a
+result, we combined this idea with Mario Kart aesthetics to create a program
+that helps people who face barriers related to executive functioning and task
+organization, promoting accessibility for these populations.
+
+## What it does
+
+Little Wins automatically generates steps and subtasks for each task a user
+adds using the Google Gemini API. This provides a clear starting point and
+checkpoints for the user. It also incorporates a Mario Kart-inspired theme
+that aims to make task management more engaging and rewarding. Users can
+choose a buddy for each task and watch the buddy move along a racetrack as
+they complete subtasks. Each spot on the track represents a step toward
+completing the overall task, providing a visual representation of progress.
+
+## How we built it
+
+- Next.js with the App Router for the application and backend API routes
+- TypeScript for all application code
+- Tailwind CSS for consistent styling across the frontend
+- Supabase PostgreSQL for task and subtask storage
+- Supabase Auth for authentication
+- Google Gemini API for AI-powered task breakdown
+
+## Challenges we ran into
+
+One of the main challenges we ran into was integrating everyone's work into a
+cohesive application. When multiple team members worked on the same
+components simultaneously, we had to coordinate our changes and merge our
+work appropriately so that everything was saved without overwriting anyone's
+contributions.
+
+We also faced challenges with the UI design. We had to make sure the design
+was informative while maintaining a clean interface. This was an important
+consideration for our target population, as an overly cluttered design could
+increase cognitive load and make the application feel overwhelming. Since our
+goal was to make task management more accessible and approachable, it was
+important to ensure that our interface was clear without adding unnecessary
+complexity.
+
+## Accomplishments that we're proud of
+
+One accomplishment that we're proud of is our UI design, particularly how we
+created an interface that captures the 2016 vibe while remaining visually
+clean and straightforward. We are especially proud of our progress page,
+where we incorporated game-like elements inspired by Mario Kart to make task
+management more interactive and engaging.
+
+Features such as choosing a Mario Kart character as a buddy and watching it
+move along a racetrack allowed us to transform regular task management into a
+more enjoyable experience. Overall, we are proud of how we tailored our
+application and features to our target population while keeping accessibility
+and user needs in mind.
+
+## What we learned
+
+By developing Little Wins, we learned to balance functionality and
+accessibility with visual design so that we can genuinely benefit our target
+population. We learned to design for the needs of our target population while
+considering the diverse needs, preferences, and abilities of our users.
+
+## Relation to the theme
+
+For the theme, we focused on enhancing accessibility for communities facing
+executive functioning challenges, including people with ADHD and autism,
+through inclusive technology. By automatically generating subtasks and using
+a fun Mario Kart theme to track progress, we hoped to improve accessibility
+by breaking down some of the barriers that inhibit users' ability to complete
+their tasks and take charge of their lives.
+
+Mario Kart was also very popular in 2016, tying into the Back to 2016 theme of
+this hackathon.
+
+## What's next for Little Wins - Health & Accessibility Track
+
+As we move forward with Little Wins, we hope to incorporate more visual
+elements and customizable features that make task management accessible to a
+wider range of users. We would like to explore ways to present information in
+different formats to accommodate users with varying cognitive needs. For
+instance, we would also like to implement an auditory component where users
+can verbally add tasks and hear their tasks spoken aloud.
+
+Ultimately, we aim to make Little Wins a more inclusive tool that supports a
+broader range of impairments and needs.
+
+## Built With
+
+- [CSS](https://devpost.com/software/built-with/css)
+- [Google Gemini](https://devpost.com/software/built-with/gemini)
+- [Next.js](https://nextjs.org/)
+- [Supabase](https://supabase.com/)
+- [TypeScript](https://devpost.com/software/built-with/typescript)
 
 ## Local setup
 
 Copy `.env.example` to `.env.local` and add the Supabase URL, publishable key,
-and Gemini API key before running the app. The home and progress pages read authenticated
-tasks and subtasks from the `tasks` and `subtasks` tables. Row-level security
-means users must be signed in before their tasks can be loaded.
+and Gemini API key before running the app. Apply the SQL migrations in
+`supabase/migrations/` to configure the task tables and the atomic parent-task
+completion RPC.
 
-## Pages
-
-- `/` shows upcoming tasks and subtasks.
-- `/tasks` shows all tasks, lets signed-in users create tasks with ordered
-  subtasks and a selected avatar, generate editable step suggestions with
-  Gemini, and update completion. Completing a parent task also completes its
-  subtasks.
-- `/progress` shows progress tracks from Supabase. It displays completed
-  subtasks but does not change them; the task screen owns that interaction.
-  Dismissing a finished track is saved in browser storage for the signed-in
-  user. The selectable transparent character PNGs live in `public/avatars/`;
-  update their paths in `components/Avatar.tsx` when replacing them. Add the
-  finish-line mascot image at `public/finish-character-flag.png`.
-
-Apply the SQL migrations in `supabase/migrations/` to configure the task tables
-and the atomic parent-task completion RPC.
-
-## Getting Started
-
-First, run the development server:
+Start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Currently, Little Wins only runs locally, but we plan to deploy it to Vercel.
