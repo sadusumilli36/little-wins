@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
 import type { TaskProgress } from "./progress-types";
 
-const CHARCOAL = "#292d32";
 const GOLD = "#daa668";
 const CHECKPOINT_BLACK = "#000000";
 const CHECKPOINT_YELLOW = "#FBD000";
@@ -105,7 +104,7 @@ export default function ProgressTrack({
   onFinish,
 }: {
   task: TaskProgress;
-  onFinish: (taskId: string) => void;
+  onFinish: (taskId: string) => void | Promise<void>;
 }) {
   const total = task.subtasks.length;
   const completedCount = task.subtasks.filter(
@@ -135,15 +134,15 @@ export default function ProgressTrack({
   useEffect(() => {
     if (isComplete && arrived && !notified.current) {
       notified.current = true;
-      onFinish(task.id);
+      void onFinish(task.id);
     }
   }, [arrived, isComplete, onFinish, task.id]);
 
   return (
     <article aria-label={`${task.name} progress`} className="w-full">
-      <div className="mb-1 inline-flex flex-wrap items-center gap-x-2 rounded-full bg-white px-4 py-2 text-base font-semibold shadow-sm">
+      <div className="mb-1 inline-flex flex-wrap items-center gap-x-2 rounded-full bg-white px-4 py-2 text-lg font-semibold shadow-sm">
         <h2>{task.name}</h2>
-        <span className="text-sm font-medium text-charcoal/70">
+        <span className="text-base font-medium text-charcoal/70">
           {completedCount} of {total} done
         </span>
       </div>
@@ -194,17 +193,6 @@ export default function ProgressTrack({
           <FinishFlag />
         </div>
 
-        <span
-          aria-hidden="true"
-          className="absolute z-10 h-4 w-4 rounded-full"
-          style={{
-            left: toPercent(pointAt(0).x, WIDTH),
-            top: toPercent(pointAt(0).y, HEIGHT),
-            transform: "translate(-50%, -50%)",
-            backgroundColor: CHARCOAL,
-          }}
-        />
-
         {task.subtasks.map((subtask, index) => {
           const position = (index + 1) / (total + 1);
           const point = pointAt(position);
@@ -252,7 +240,7 @@ export default function ProgressTrack({
               {isActive && (
                 <span
                   role="status"
-                  className="pointer-events-none absolute z-30 w-max max-w-[200px] rounded-full px-3 py-1 text-center text-sm font-semibold text-charcoal shadow-sm"
+                  className="pointer-events-none absolute z-30 w-max max-w-[200px] rounded-full px-3 py-1 text-base font-semibold text-charcoal shadow-sm"
                   style={{
                     left: toPercent(point.x, WIDTH),
                     top: toPercent(point.y, HEIGHT),

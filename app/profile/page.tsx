@@ -27,11 +27,14 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [isSetup, setIsSetup] = useState(false);
+  const [isSetup] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("setup") === "1",
+  );
 
   useEffect(() => {
     let active = true;
-    setIsSetup(new URLSearchParams(window.location.search).get("setup") === "1");
 
     async function loadProfile() {
       const supabase = createClient();

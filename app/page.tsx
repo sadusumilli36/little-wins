@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import ProfileNavLink from "@/components/ProfileNavLink";
 import ProgressFlagIcon from "./components/ProgressFlagIcon";
+import Avatar from "@/components/Avatar";
+import CompletionCelebration from "@/components/CompletionCelebration";
 import { createClient } from "@/lib/supabase";
 
 type Subtask = {
@@ -20,8 +22,11 @@ type Task = {
   name: string;
   due_at: string | null;
   status: "upcoming" | "in_progress" | "completed";
+  character_id: string | null;
   subtasks: Subtask[];
 };
+
+const MAX_HOME_TASKS = 3;
 
 export default function Home() {
   const router = useRouter();
@@ -30,6 +35,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [childName, setChildName] = useState<string | null>(null);
+  const [completedTask, setCompletedTask] = useState<Task | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -107,10 +113,10 @@ export default function Home() {
 
       const { data, error } = await supabase
         .from("tasks")
-        .select("id, name, due_at, status, subtasks(id, description, completed, display_order)")
+        .select("id, name, due_at, status, character_id, subtasks(id, description, completed, display_order)")
         .neq("status", "completed")
         .order("due_at", { ascending: true, nullsFirst: false })
-        .limit(3);
+        .limit(MAX_HOME_TASKS);
 
       if (error) {
         setMessage(error.message);
@@ -145,7 +151,10 @@ export default function Home() {
   }
 
   const upcomingTasks = useMemo(
-    () => tasks.filter((task) => task.status !== "completed"),
+    () =>
+      tasks
+        .filter((task) => task.status !== "completed")
+        .slice(0, MAX_HOME_TASKS),
     [tasks],
   );
 
@@ -177,23 +186,8 @@ export default function Home() {
       return;
     }
 
-    setTasks((current) =>
-      current.map((item) =>
-        item.id === task.id
-          ? {
-              ...item,
-              status: nextStatus,
-              subtasks:
-                nextStatus === "completed"
-                  ? item.subtasks.map((subtask) => ({
-                      ...subtask,
-                      completed: true,
-                    }))
-                  : item.subtasks,
-            }
-          : item,
-      ),
-    );
+    setTasks((current) => current.filter((item) => item.id !== task.id));
+    if (nextStatus === "completed") setCompletedTask(task);
   }
 
   async function toggleSubtask(task: Task, subtask: Subtask) {
@@ -230,6 +224,7 @@ export default function Home() {
         return;
       }
       setTasks((current) => current.filter((item) => item.id !== task.id));
+      setCompletedTask({ ...task, status: "completed", subtasks: updatedSubtasks });
       return;
     }
 
@@ -255,7 +250,7 @@ export default function Home() {
             <Link
               href="/profile"
               aria-label={`${childName}, open your profile`}
-              className="absolute right-0 top-0 inline-flex min-h-11 max-w-[40%] items-center rounded-full bg-white px-4 py-2 text-sm font-bold text-royal-blue shadow-sm transition hover:bg-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
+              className="absolute -right-4 top-0 inline-flex min-h-11 max-w-[40%] items-center rounded-full bg-white px-4 py-2 text-sm font-bold text-royal-blue shadow-sm transition hover:bg-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
             >
               <span className="truncate">{childName}</span>
             </Link>
@@ -263,33 +258,36 @@ export default function Home() {
           <Image
             src="/logo.png"
             alt="Little Wins"
-            width={570}
+            width={520}
             height={192}
             priority
-            className="h-auto w-[570px] max-w-full"
+            className="h-auto w-[520px] max-w-full"
           />
+          <p className="-mt-1 rounded-full bg-forest-green px-6 py-3 text-lg font-bold text-white shadow-sm">
+            Every little win counts!
+          </p>
         </header>
 
         <section
-          aria-labelledby="upcoming-heading"
-          className="mx-auto mt-10 max-w-xl text-center"
+          aria-labelledby="tasks-heading"
+          className="mx-auto mt-14 max-w-xl"
         >
-          <h1
-            id="upcoming-heading"
-            className="inline-flex rounded-full bg-coin-gold px-6 py-3 text-xl font-bold shadow-sm"
-          >
-            Upcoming Tasks
-          </h1>
-          <div className="mt-3">
+          <div className="flex items-center justify-between gap-3">
+            <h1
+              id="tasks-heading"
+              className="inline-flex rounded-full bg-coin-gold px-6 py-3 text-xl font-bold shadow-sm"
+            >
+              Your Tasks
+            </h1>
             <Link
               href="/tasks"
-              className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-bold text-royal-blue transition hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
+              className="inline-flex min-h-11 items-center rounded-full px-3 text-sm font-bold text-royal-blue transition hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
             >
               View all tasks
             </Link>
           </div>
 
-          <div className="mt-5 space-y-4 text-left">
+          <div className="mt-4 space-y-4 text-left">
             {loading && <EmptyState>Loading your tasks...</EmptyState>}
             {!loading && message && <EmptyState>{message}</EmptyState>}
             {!loading &&
@@ -300,48 +298,83 @@ export default function Home() {
             {!loading &&
               !message &&
               upcomingTasks.map((task) => {
-                const completedCount = task.subtasks.filter(
-                  (subtask) => subtask.completed,
-                ).length;
+                const nextStep = task.subtasks
+                  .slice()
+                  .sort((a, b) => a.display_order - b.display_order)
+                  .find((subtask) => !subtask.completed);
                 const expanded = expandedTaskId === task.id;
 
                 return (
                   <article
                     key={task.id}
-                    className="rounded-3xl bg-white p-5 shadow-sm"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() =>
+                      setExpandedTaskId(expanded ? null : task.id)
+                    }
+                    onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget) return;
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setExpandedTaskId(expanded ? null : task.id);
+                      }
+                    }}
+                    className="cursor-pointer rounded-3xl bg-white p-5 shadow-sm transition hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
                   >
                     <div className="flex items-start gap-4">
                       <input
                         type="checkbox"
                         checked={false}
+                        onClick={(event) => event.stopPropagation()}
                         onChange={() => void toggleTask(task)}
                         aria-label={`Mark ${task.name} complete`}
                         className="mt-1 size-6 shrink-0 accent-forest-green"
                       />
+                      <Avatar
+                        id={task.character_id}
+                        label={`${task.name} buddy`}
+                        className="mt-0.5 size-12 shrink-0"
+                      />
                       <div className="min-w-0 flex-1">
                         <h2 className="text-lg font-bold">{task.name}</h2>
-                        <p className="mt-1 text-sm text-charcoal/75">
-                          {task.subtasks.length === 0
-                            ? "Ready when you are"
-                            : `${completedCount} of ${task.subtasks.length} steps completed`}
-                        </p>
+                        {nextStep ? (
+                          <p className="mt-2 text-base text-charcoal/75">
+                            <span className="font-bold text-forest-green">
+                              Next step:
+                            </span>{" "}
+                            {nextStep.description}
+                          </p>
+                        ) : (
+                          <p className="mt-2 text-base text-charcoal/75">
+                            {task.subtasks.length === 0
+                              ? "Ready when you are"
+                              : "All steps complete"}
+                          </p>
+                        )}
                       </div>
                       <button
                         type="button"
-                        onClick={() =>
-                          setExpandedTaskId(expanded ? null : task.id)
-                        }
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setExpandedTaskId(expanded ? null : task.id);
+                        }}
                         aria-expanded={expanded}
                         aria-controls={`subtasks-${task.id}`}
-                        className="flex size-11 shrink-0 items-center justify-center rounded-full text-xl font-bold text-royal-blue transition hover:bg-sky-blue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
+                        className="flex size-16 shrink-0 items-center justify-center rounded-full text-5xl font-bold leading-none text-royal-blue transition hover:bg-sky-blue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
                         aria-label={`${expanded ? "Hide" : "Show"} subtasks for ${task.name}`}
                       >
-                        {expanded ? "−" : "+"}
+                        <span className="inline-block scale-150">
+                          {expanded ? "−" : "+"}
+                        </span>
                       </button>
                     </div>
 
                     {expanded && (
-                      <div id={`subtasks-${task.id}`} className="mt-4 border-t border-sage-gray/40 pt-4">
+                      <div
+                        id={`subtasks-${task.id}`}
+                        className="mt-4 border-t border-sage-gray/40 pt-4"
+                        onClick={(event) => event.stopPropagation()}
+                      >
                         {task.subtasks.length === 0 ? (
                           <p className="text-sm text-charcoal/75">No subtasks yet.</p>
                         ) : (
@@ -371,6 +404,11 @@ export default function Home() {
                 );
               })}
           </div>
+
+          <div
+            aria-hidden="true"
+            className="mt-6 h-3 rounded-full bg-forest-green shadow-inner"
+          />
         </section>
       </div>
 
@@ -406,6 +444,13 @@ export default function Home() {
           <ProfileNavLink />
         </div>
       </nav>
+
+      {completedTask && (
+        <CompletionCelebration
+          taskName={completedTask.name}
+          onClose={() => setCompletedTask(null)}
+        />
+      )}
     </main>
   );
 }

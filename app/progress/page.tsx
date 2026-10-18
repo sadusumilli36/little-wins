@@ -12,6 +12,7 @@ import type { SubtaskProgress, TaskProgress } from "./progress-types";
 type SupabaseTask = {
   id: string;
   name: string;
+  status: "upcoming" | "in_progress" | "completed";
   character_id: string | null;
   character_color: string | null;
   subtasks: SubtaskProgress[];
@@ -25,6 +26,7 @@ export default function ProgressPage() {
   const [retry, setRetry] = useState(0);
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [finishedQueue, setFinishedQueue] = useState<string[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -54,6 +56,7 @@ export default function ProgressPage() {
         router.replace("/auth");
         return;
       }
+      setUserId(user.id);
 
       let dismissedTaskIds: string[] = [];
       try {
@@ -83,7 +86,7 @@ export default function ProgressPage() {
       const { data, error: queryError } = await supabase
         .from("tasks")
         .select(
-          "id, name, character_id, character_color, subtasks(id, description, completed, display_order)",
+          "id, name, status, character_id, character_color, subtasks(id, description, completed, display_order)",
         )
         .order("created_at", { ascending: true });
 
@@ -94,11 +97,71 @@ export default function ProgressPage() {
         return;
       }
 
-      setDismissed(dismissedTaskIds);
+      const loadedTasks = (data ?? []) as SupabaseTask[];
+      const alreadyCompleted = loadedTasks.filter(
+        (task) =>
+          task.status !== "completed" &&
+          task.subtasks.length > 0 &&
+          task.subtasks.every((subtask) => subtask.completed),
+      );
+
+      if (alreadyCompleted.length > 0) {
+        const { error: statusError } = await supabase
+          .from("tasks")
+          .update({ status: "completed" })
+          .in(
+            "id",
+            alreadyCompleted.map((task) => task.id),
+          );
+
+        if (statusError) {
+          setError(`Could not complete finished tasks: ${statusError.message}`);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const completedTaskIds = new Set(
+        loadedTasks
+          .filter(
+            (task) =>
+              task.status === "completed" ||
+              alreadyCompleted.some((completed) => completed.id === task.id),
+          )
+          .map((task) => task.id),
+      );
+      const activeDismissedTaskIds = dismissedTaskIds.filter((taskId) =>
+        completedTaskIds.has(taskId),
+      );
+
+      if (activeDismissedTaskIds.length !== dismissedTaskIds.length) {
+        try {
+          window.localStorage.setItem(
+            `little-wins:progress-dismissed:${user.id}`,
+            JSON.stringify(activeDismissedTaskIds),
+          );
+        } catch (storageError) {
+          setError(
+            `Could not update saved progress dismissals: ${
+              storageError instanceof Error
+                ? storageError.message
+                : "browser storage is unavailable"
+            }`,
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
+      setDismissed(activeDismissedTaskIds);
       setTasks(
-        ((data ?? []) as SupabaseTask[]).map((task) => ({
+        loadedTasks.map((task) => ({
           id: task.id,
           name: task.name,
+          status:
+            alreadyCompleted.some((completed) => completed.id === task.id)
+              ? "completed"
+              : task.status,
           characterId: task.character_id,
           characterColor: task.character_color,
           subtasks: task.subtasks
@@ -126,20 +189,63 @@ export default function ProgressPage() {
     };
   }, [retry, router]);
 
-  const handleFinish = useCallback((taskId: string) => {
+  const handleFinish = useCallback(async (taskId: string) => {
+    const supabase = createClient();
+    if (!supabase) {
+      setError("Supabase is not configured yet.");
+      return;
+    }
+
+    const { error: statusError } = await supabase
+      .from("tasks")
+      .update({ status: "completed" })
+      .eq("id", taskId);
+
+    if (statusError) {
+      setError(`Could not complete task: ${statusError.message}`);
+      return;
+    }
+
+    setDismissed((current) => {
+      if (current.includes(taskId)) return current;
+      return [...current, taskId];
+    });
     setFinishedQueue((queue) =>
       queue.includes(taskId) ? queue : [...queue, taskId],
     );
-  }, []);
+    if (userId) {
+      const storageKey = `little-wins:progress-dismissed:${userId}`;
+      try {
+        const saved = window.localStorage.getItem(storageKey);
+        const savedIds: unknown = saved ? JSON.parse(saved) : [];
+        const dismissedIds = Array.isArray(savedIds)
+          ? savedIds.filter((id): id is string => typeof id === "string")
+          : [];
+        if (!dismissedIds.includes(taskId)) {
+          window.localStorage.setItem(
+            storageKey,
+            JSON.stringify([...dismissedIds, taskId]),
+          );
+        }
+      } catch (storageError) {
+        setError(
+          `Could not save completed progress: ${
+            storageError instanceof Error
+              ? storageError.message
+              : "browser storage is unavailable"
+          }`,
+        );
+      }
+    }
+  }, [userId]);
 
   const finishedTask = tasks.find((task) => task.id === finishedQueue[0]);
   const visibleTasks = tasks.filter(
-    (task) => !dismissed.includes(task.id),
+    (task) => task.status !== "completed" && !dismissed.includes(task.id),
   );
 
   const closePopup = () => {
     if (!finishedTask) return;
-    setDismissed((current) => [...current, finishedTask.id]);
     setFinishedQueue((queue) => queue.slice(1));
   };
 
@@ -150,28 +256,28 @@ export default function ProgressPage() {
           <h1 className="inline-flex rounded-full bg-coin-gold px-8 py-3 text-2xl font-bold shadow-sm">
             Progress
           </h1>
-          <p className="mt-3 text-charcoal/75">
+          <p className="mt-5 text-lg text-charcoal/75">
             Each dot is a step along your task&apos;s path.
           </p>
         </header>
 
         <section
           aria-label="Task progress tracks"
-          className="mx-auto mt-8 flex max-w-xl flex-col gap-8"
+          className="mx-auto mt-12 flex max-w-xl flex-col gap-10"
         >
           {loading && (
-            <p role="status" className="rounded-3xl bg-white px-5 py-8 text-center text-base shadow-sm">
+            <p role="status" className="rounded-3xl bg-white px-5 py-8 text-center text-lg shadow-sm">
               Loading your progress...
             </p>
           )}
 
           {!loading && error && (
-            <div role="alert" className="rounded-3xl bg-white px-5 py-8 text-center text-base shadow-sm">
+            <div role="alert" className="rounded-3xl bg-white px-5 py-8 text-center text-lg shadow-sm">
               <p>{error}</p>
               <button
                 type="button"
                 onClick={() => setRetry((current) => current + 1)}
-                className="mt-4 min-h-11 rounded-full bg-royal-blue px-5 py-2 font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
+                className="mt-4 min-h-11 rounded-full bg-royal-blue px-5 py-2 text-lg font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
               >
                 Try again
               </button>
@@ -187,7 +293,7 @@ export default function ProgressPage() {
           ))}
 
           {!loading && !error && visibleTasks.length === 0 && (
-            <p className="rounded-3xl bg-white px-5 py-8 text-center text-base shadow-sm">
+            <p className="rounded-3xl bg-white px-5 py-8 text-center text-lg shadow-sm">
               No tracks right now. Add a task to start a new one.
             </p>
           )}
@@ -201,14 +307,14 @@ export default function ProgressPage() {
         <div className="mx-auto flex max-w-2xl justify-between gap-2 px-5 py-3">
           <Link
             href="/"
-            className="flex min-h-11 min-w-20 flex-col items-center justify-center gap-1 rounded-2xl px-5 text-sm font-bold text-charcoal/70 transition hover:bg-sky-blue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
+            className="flex min-h-11 min-w-20 flex-col items-center justify-center gap-1 rounded-2xl px-5 text-base font-bold text-charcoal/70 transition hover:bg-sky-blue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
           >
             <span aria-hidden="true" className="text-2xl leading-5">⌂</span>
             Home
           </Link>
           <Link
             href="/tasks"
-            className="flex min-h-11 min-w-20 flex-col items-center justify-center gap-1 rounded-2xl px-5 text-sm font-bold text-charcoal/70 transition hover:bg-sky-blue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
+            className="flex min-h-11 min-w-20 flex-col items-center justify-center gap-1 rounded-2xl px-5 text-base font-bold text-charcoal/70 transition hover:bg-sky-blue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
           >
             <span aria-hidden="true" className="text-2xl leading-5">✓</span>
             Tasks
@@ -216,7 +322,7 @@ export default function ProgressPage() {
           <Link
             href="/progress"
             aria-current="page"
-            className="flex min-h-11 min-w-20 flex-col items-center justify-center gap-1 rounded-2xl px-5 text-sm font-bold text-royal-blue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
+            className="flex min-h-11 min-w-20 flex-col items-center justify-center gap-1 rounded-2xl px-5 text-base font-bold text-royal-blue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
           >
             <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center leading-none">
               <ProgressFlagIcon />
@@ -248,6 +354,11 @@ function FinishPopup({
   }, []);
 
   useEffect(() => {
+    const timeout = window.setTimeout(onClose, 4000);
+    return () => window.clearTimeout(timeout);
+  }, [onClose]);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
@@ -256,17 +367,22 @@ function FinishPopup({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/50 px-6">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/50 px-6"
+      role="presentation"
+      onClick={onClose}
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="finish-title"
         className="w-full max-w-sm rounded-3xl border-4 border-coin-gold bg-white px-6 py-8 text-center shadow-xl"
+        onClick={(event) => event.stopPropagation()}
       >
         <h2 id="finish-title" className="text-2xl font-bold">
-          Hooray! You&apos;ve finished this task!
+          Hooray, you&apos;ve finished this task!
         </h2>
-        <p className="mt-2 text-lg">{taskName}</p>
+        <p className="mt-2 text-xl">Completed: {taskName}</p>
         <button
           ref={closeRef}
           type="button"

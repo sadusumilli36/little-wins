@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Avatar, { AVATARS, type AvatarId, getAvatar } from "@/components/Avatar";
 import ProfileNavLink from "@/components/ProfileNavLink";
+import CompletionCelebration from "@/components/CompletionCelebration";
 import { createClient } from "@/lib/supabase";
 import ProgressFlagIcon from "../components/ProgressFlagIcon";
 
@@ -59,6 +59,7 @@ export default function TasksPage() {
   const [expandedTaskIds, setExpandedTaskIds] = useState<string[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [retry, setRetry] = useState(0);
+  const [completedTask, setCompletedTask] = useState<Task | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -166,6 +167,7 @@ export default function TasksPage() {
         ),
       ),
     );
+    if (nextStatus === "completed") setCompletedTask(task);
   }
 
   async function toggleSubtask(task: Task, subtask: Subtask) {
@@ -235,6 +237,9 @@ export default function TasksPage() {
         ),
       ),
     );
+    if (nextTaskStatus === "completed") {
+      setCompletedTask({ ...task, status: "completed", subtasks: nextSubtasks });
+    }
   }
 
   async function createTask(
@@ -333,16 +338,6 @@ export default function TasksPage() {
     <main className="min-h-screen bg-sky-blue pb-28 text-charcoal">
       <div className="mx-auto min-h-screen w-full max-w-2xl px-5 py-8 sm:px-8">
         <header className="flex flex-col items-center gap-5 text-center">
-          <Link href="/" aria-label="Little Wins home">
-            <Image
-              src="/logo.png"
-              alt="Little Wins"
-              width={570}
-              height={192}
-              priority
-              className="h-auto w-[420px] max-w-full"
-            />
-          </Link>
           <div className="flex w-full items-center justify-between gap-4">
             <h1 className="inline-flex rounded-full bg-coin-gold px-6 py-3 text-xl font-bold shadow-sm">
               All Tasks
@@ -438,6 +433,13 @@ export default function TasksPage() {
           onSubmit={createTask}
         />
       )}
+
+      {completedTask && (
+        <CompletionCelebration
+          taskName={completedTask.name}
+          onClose={() => setCompletedTask(null)}
+        />
+      )}
     </main>
   );
 }
@@ -484,14 +486,25 @@ function TaskSection({
           return (
             <article
               key={task.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => onToggleExpanded(task.id)}
+              onKeyDown={(event) => {
+                if (event.target !== event.currentTarget) return;
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onToggleExpanded(task.id);
+                }
+              }}
               className={`rounded-3xl bg-white p-5 shadow-sm ${
                 task.status === "completed" ? "opacity-80" : ""
-              }`}
+              } cursor-pointer transition hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue`}
             >
               <div className="flex items-start gap-3">
                 <input
                   type="checkbox"
                   checked={task.status === "completed"}
+                  onClick={(event) => event.stopPropagation()}
                   onChange={() => onToggleTask(task)}
                   aria-label={`Mark ${task.name} ${
                     task.status === "completed" ? "to do" : "completed"
@@ -513,26 +526,31 @@ function TaskSection({
                   >
                     {task.name}
                   </h3>
-                  <p className="mt-1 text-sm text-charcoal/75">
+                  <p className="mt-1 text-base text-charcoal/75">
                     {task.subtasks.length === 0
                       ? "No steps added"
                       : `${completedCount} of ${task.subtasks.length} steps completed`}
                   </p>
                   {formatDueDate(task.due_at) && (
-                    <p className="mt-1 text-sm text-charcoal/65">
+                    <p className="mt-1 text-base text-charcoal/65">
                       Due {formatDueDate(task.due_at)}
                     </p>
                   )}
                 </div>
                 <button
                   type="button"
-                  onClick={() => onToggleExpanded(task.id)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onToggleExpanded(task.id);
+                  }}
                   aria-expanded={expanded}
                   aria-controls={`task-subtasks-${task.id}`}
                   aria-label={`${expanded ? "Hide" : "Show"} steps for ${task.name}`}
-                  className="flex size-11 shrink-0 items-center justify-center rounded-full text-xl font-bold text-royal-blue transition hover:bg-sky-blue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
+                  className="flex size-16 shrink-0 items-center justify-center rounded-full text-5xl font-bold leading-none text-royal-blue transition hover:bg-sky-blue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
                 >
-                  {expanded ? "−" : "+"}
+                  <span className="inline-block scale-150">
+                    {expanded ? "−" : "+"}
+                  </span>
                 </button>
               </div>
 
@@ -540,6 +558,7 @@ function TaskSection({
                 <div
                   id={`task-subtasks-${task.id}`}
                   className="mt-4 border-t border-sage-gray/40 pt-4"
+                  onClick={(event) => event.stopPropagation()}
                 >
                   {task.subtasks.length === 0 ? (
                     <p className="text-sm text-charcoal/75">No steps yet.</p>
@@ -729,9 +748,6 @@ function NewTaskDialog({
             <h2 id="new-task-title" className="text-2xl font-bold">
               Add a task
             </h2>
-            <p className="mt-1 text-sm text-charcoal/70">
-              Choose a buddy, add steps, and pick a due date.
-            </p>
           </div>
           <button
             type="button"
