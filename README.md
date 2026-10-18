@@ -1,4 +1,11 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Little Wins is a Next.js app with Supabase-backed tasks and subtasks.
+
+## Local setup
+
+Copy `.env.local.example` to `.env.local` and add the Supabase URL and
+publishable key before running the app. Also the Gemini API Key whenever that is implemented. The home page reads authenticated tasks
+and subtasks from the `tasks` and `subtasks` tables. Row-level security means
+users must be signed in before their tasks can be loaded.
 
 ## Getting Started
 
