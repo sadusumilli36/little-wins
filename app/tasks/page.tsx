@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Avatar, { AVATARS, type AvatarId, getAvatar } from "@/components/Avatar";
+import ProfileNavLink from "@/components/ProfileNavLink";
 import { createClient } from "@/lib/supabase";
 import ProgressFlagIcon from "../components/ProgressFlagIcon";
 
@@ -900,7 +901,7 @@ function PrimaryNavigation() {
       aria-label="Primary navigation"
       className="fixed inset-x-0 bottom-0 border-t border-charcoal/10 bg-white/95 shadow-[0_-4px_16px_rgba(41,45,50,0.08)] backdrop-blur"
     >
-      <div className="mx-auto flex max-w-2xl justify-start gap-2 px-5 py-3">
+      <div className="mx-auto flex max-w-2xl justify-between gap-2 px-5 py-3">
         <Link
           href="/"
           className="flex min-h-11 min-w-20 flex-col items-center justify-center gap-1 rounded-2xl px-4 text-sm font-bold text-charcoal/70 transition hover:bg-sky-blue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
@@ -925,6 +926,7 @@ function PrimaryNavigation() {
           </span>
           Progress
         </Link>
+        <ProfileNavLink />
       </div>
     </nav>
   );

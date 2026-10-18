@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import ProfileNavLink from "@/components/ProfileNavLink";
 import ProgressFlagIcon from "./components/ProgressFlagIcon";
 import { createClient } from "@/lib/supabase";
 
@@ -28,6 +29,7 @@ export default function Home() {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
+  const [childName, setChildName] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -78,6 +80,28 @@ export default function Home() {
 
       if (!session) {
         window.location.replace("/auth");
+        return;
+      }
+
+      // Show the child's saved name from their profile (if they have one).
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .maybeSingle<{ display_name: string | null }>();
+      if (!active) return;
+      setChildName(profile?.display_name?.trim() || null);
+
+      // First time here (no profile saved yet): send them to set one up.
+      // Skipped when the lookup failed, or if they chose "Skip for now".
+      let skippedSetup = false;
+      try {
+        skippedSetup =
+          window.sessionStorage.getItem("lw-profile-setup-skipped") === "1";
+      } catch {
+        // Storage can be unavailable; treat as not skipped.
+      }
+      if (!profileError && !profile && !skippedSetup) {
+        router.replace("/profile?setup=1");
         return;
       }
 
@@ -227,6 +251,15 @@ export default function Home() {
           >
             Log out
           </button>
+          {childName && (
+            <Link
+              href="/profile"
+              aria-label={`${childName}, open your profile`}
+              className="absolute right-0 top-0 inline-flex min-h-11 max-w-[40%] items-center rounded-full bg-white px-4 py-2 text-sm font-bold text-royal-blue shadow-sm transition hover:bg-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
+            >
+              <span className="truncate">{childName}</span>
+            </Link>
+          )}
           <Image
             src="/logo.png"
             alt="Little Wins"
@@ -345,7 +378,7 @@ export default function Home() {
         aria-label="Primary navigation"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-charcoal/10 bg-white opacity-100 shadow-[0_-4px_16px_rgba(41,45,50,0.08)]"
       >
-        <div className="mx-auto flex max-w-2xl justify-start gap-2 px-5 py-3">
+        <div className="mx-auto flex max-w-2xl justify-between gap-2 px-5 py-3">
           <Link
             href="/"
             aria-current="page"
@@ -370,6 +403,7 @@ export default function Home() {
             </span>
             Progress
           </Link>
+          <ProfileNavLink />
         </div>
       </nav>
     </main>
