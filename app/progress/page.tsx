@@ -20,9 +20,7 @@ export default function ProgressPage() {
   const [tasks, setTasks] = useState<TaskProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
-  const [userId, setUserId] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [finishedQueue, setFinishedQueue] = useState<string[]>([]);
 
@@ -94,7 +92,6 @@ export default function ProgressPage() {
         return;
       }
 
-      setUserId(user.id);
       setDismissed(dismissedTaskIds);
       setTasks(
         ((data ?? []) as SupabaseTask[]).map((task) => ({
@@ -126,9 +123,6 @@ export default function ProgressPage() {
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [retry, router]);
-  const [message, setMessage] = useState<string | null>(null);
-  const [dismissed, setDismissed] = useState<string[]>([]);
-  const [finishedQueue, setFinishedQueue] = useState<string[]>([]);
 
   const handleFinish = useCallback((taskId: string) => {
     setFinishedQueue((queue) =>
@@ -189,12 +183,6 @@ export default function ProgressPage() {
               onFinish={handleFinish}
             />
           ))}
-
-          {notice && (
-            <p role="status" className="rounded-2xl bg-white px-4 py-3 text-center text-sm">
-              {notice}
-            </p>
-          )}
 
           {!loading && !error && visibleTasks.length === 0 && (
             <p className="rounded-3xl bg-white px-5 py-8 text-center text-base shadow-sm">

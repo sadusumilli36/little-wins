@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import Avatar, { getAvatar } from "@/components/Avatar";
+import Avatar from "@/components/Avatar";
 import type { TaskProgress } from "./progress-types";
 
 const FLAG_SRC = "/images/finish-flag.png";
@@ -70,39 +70,6 @@ function useAnimatedProgress(target: number) {
   }, [target]);
 
   return progress;
-}
-
-function CharacterImage({
-  src,
-  name,
-}: {
-  src: string;
-  name: string;
-}) {
-  const [failed, setFailed] = useState(false);
-
-  if (failed) {
-    return (
-      <div
-        className="flex h-full w-full items-center justify-center bg-royal-blue text-lg font-bold text-white"
-        aria-hidden="true"
-      >
-        {name.charAt(0)}
-      </div>
-    );
-  }
-
-  return (
-    <Image
-      src={src}
-      alt=""
-      width={44}
-      height={44}
-      unoptimized
-      className="h-full w-full object-cover"
-      onError={() => setFailed(true)}
-    />
-  );
 }
 
 function FinishFlag() {
@@ -278,10 +245,7 @@ export default function ProgressTrack({
             transform: "translate(-50%, -78%)",
           }}
         >
-          <CharacterImage
-            src={task.characterImage}
-            name={task.characterName}
-          />
+          <Avatar id={task.characterId} className="h-full w-full object-contain" />
         </div>
       </div>
     </article>

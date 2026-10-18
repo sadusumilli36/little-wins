@@ -53,6 +53,7 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [expandedTaskIds, setExpandedTaskIds] = useState<string[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -83,6 +84,7 @@ export default function TasksPage() {
         router.replace("/auth");
         return;
       }
+      setIsAuthorized(true);
 
       const { data, error } = await supabase
         .from("tasks")
@@ -273,15 +275,19 @@ export default function TasksPage() {
     const descriptions = values.subtasks
       .map((description) => description.trim())
       .filter(Boolean);
+    let insertedSubtasks: Subtask[] = [];
 
     if (descriptions.length > 0) {
-      const { error: subtaskError } = await supabase.from("subtasks").insert(
-        descriptions.map((description, index) => ({
-          task_id: insertedTask.id,
-          description,
-          display_order: index,
-        })),
-      );
+      const { data, error: subtaskError } = await supabase
+        .from("subtasks")
+        .insert(
+          descriptions.map((description, index) => ({
+            task_id: insertedTask.id,
+            description,
+            display_order: index,
+          })),
+        )
+        .select("id, description, completed, display_order");
 
       if (subtaskError) {
         const { error: cleanupError } = await supabase
@@ -297,16 +303,13 @@ export default function TasksPage() {
         );
         return false;
       }
+
+      insertedSubtasks = (data ?? []) as Subtask[];
     }
 
     const newTask: Task = {
       ...insertedTask,
-      subtasks: descriptions.map((description, index) => ({
-        id: `new-${insertedTask.id}-${index}`,
-        description,
-        completed: false,
-        display_order: index,
-      })),
+      subtasks: insertedSubtasks,
     } as Task;
 
     setTasks((current) => sortTasks([...current, newTask]));
@@ -332,17 +335,19 @@ export default function TasksPage() {
             <h1 className="inline-flex rounded-full bg-coin-gold px-6 py-3 text-xl font-bold shadow-sm">
               All Tasks
             </h1>
-            <button
-              type="button"
-              onClick={() => {
-                setActionError(null);
-                setIsFormOpen(true);
-              }}
-              className="flex min-h-12 items-center gap-2 rounded-full bg-royal-blue px-5 py-3 font-bold text-white shadow-sm transition hover:bg-royal-blue/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
-            >
-              <span aria-hidden="true" className="text-2xl leading-5">+</span>
-              New task
-            </button>
+            {isAuthorized && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActionError(null);
+                  setIsFormOpen(true);
+                }}
+                className="flex min-h-12 items-center gap-2 rounded-full bg-royal-blue px-5 py-3 font-bold text-white shadow-sm transition hover:bg-royal-blue/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
+              >
+                <span aria-hidden="true" className="text-2xl leading-5">+</span>
+                New task
+              </button>
+            )}
           </div>
         </header>
 
@@ -585,6 +590,7 @@ function NewTaskDialog({
   const [dueAt, setDueAt] = useState("");
   const [subtasks, setSubtasks] = useState<string[]>([""]);
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function updateSubtask(index: number, value: string) {
@@ -603,6 +609,60 @@ function NewTaskDialog({
       [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
       return next;
     });
+  }
+
+  async function generateSubtasks() {
+    const taskName = name.trim();
+    if (!taskName) {
+      setError("Enter a task name before generating steps.");
+      return;
+    }
+
+    setError(null);
+    setGenerating(true);
+    try {
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+      if (!session?.access_token) {
+        setError("Your session has expired. Please sign in again.");
+        return;
+      }
+
+      const response = await fetch("/api/generate-subtasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + session.access_token,
+        },
+        credentials: "same-origin",
+        body: JSON.stringify({ task: taskName }),
+      });
+      const result: { subtasks?: unknown; error?: string } =
+        await response.json();
+
+      if (!response.ok || !Array.isArray(result.subtasks)) {
+        throw new Error(result.error ?? "Could not generate steps.");
+      }
+
+      const generated = result.subtasks.filter(
+        (subtask): subtask is string =>
+          typeof subtask === "string" && subtask.trim().length > 0,
+      );
+      if (generated.length === 0) {
+        throw new Error("Gemini did not return any steps. Please try again.");
+      }
+      setSubtasks(generated);
+    } catch (generationError) {
+      setError(
+        generationError instanceof Error
+          ? generationError.message
+          : "Could not generate steps. Please try again.",
+      );
+    } finally {
+      setGenerating(false);
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -670,7 +730,10 @@ function NewTaskDialog({
           </button>
         </div>
 
-        <form onSubmit={(event) => void handleSubmit(event)} className="mt-6 space-y-6">
+        <form
+          onSubmit={(event) => void handleSubmit(event)}
+          className="mt-6 space-y-6"
+        >
           <div>
             <label htmlFor="task-name" className="text-sm font-bold">
               What do you want to do?
@@ -716,6 +779,15 @@ function NewTaskDialog({
               ))}
             </div>
           </fieldset>
+
+          <button
+            type="button"
+            onClick={() => void generateSubtasks()}
+            disabled={generating || saving}
+            className="min-h-12 w-full rounded-full bg-coin-gold px-5 py-3 font-bold text-charcoal shadow-sm transition hover:bg-coin-gold/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue disabled:cursor-wait disabled:opacity-60"
+          >
+            {generating ? "Generating steps..." : "Generate steps"}
+          </button>
 
           <fieldset>
             <legend className="text-sm font-bold">Steps</legend>
