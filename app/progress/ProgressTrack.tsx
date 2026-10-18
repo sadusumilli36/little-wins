@@ -2,7 +2,20 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import type { TaskProgress } from "./progress-mock";
+import Avatar, { getAvatar } from "@/components/Avatar";
+
+export type TaskProgress = {
+  id: string;
+  name: string;
+  characterId: string | null;
+  characterColor: string | null;
+  subtasks: {
+    id: string;
+    description: string;
+    completed: boolean;
+    display_order: number;
+  }[];
+};
 
 const FLAG_SRC = "/images/finish-flag.png";
 const CHARCOAL = "#292d32";
@@ -71,39 +84,6 @@ function useAnimatedProgress(target: number) {
   return progress;
 }
 
-function CharacterImage({
-  src,
-  name,
-}: {
-  src: string;
-  name: string;
-}) {
-  const [failed, setFailed] = useState(false);
-
-  if (failed) {
-    return (
-      <div
-        className="flex h-full w-full items-center justify-center bg-royal-blue text-lg font-bold text-white"
-        aria-hidden="true"
-      >
-        {name.charAt(0)}
-      </div>
-    );
-  }
-
-  return (
-    <Image
-      src={src}
-      alt=""
-      width={44}
-      height={44}
-      unoptimized
-      className="h-full w-full object-cover"
-      onError={() => setFailed(true)}
-    />
-  );
-}
-
 function FinishFlag() {
   const [failed, setFailed] = useState(false);
 
@@ -153,6 +133,7 @@ export default function ProgressTrack({
   const [hovered, setHovered] = useState<number | null>(null);
   const [pinned, setPinned] = useState<number | null>(null);
   const activeIndex = pinned ?? hovered;
+  const avatar = getAvatar(task.characterId);
 
   useEffect(() => {
     if (isComplete && arrived && !notified.current) {
@@ -277,7 +258,11 @@ export default function ProgressTrack({
             transform: "translate(-50%, -78%)",
           }}
         >
-          <CharacterImage src={task.characterImage} name={task.characterName} />
+          <Avatar
+            id={task.characterId}
+            label={`${avatar.name} avatar`}
+            className="h-full w-full"
+          />
         </div>
       </div>
     </article>
