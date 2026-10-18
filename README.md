@@ -2,18 +2,22 @@ Little Wins is a Next.js app with Supabase-backed tasks and subtasks.
 
 ## Local setup
 
-Copy `.env.local.example` to `.env.local` and add the Supabase URL and
-publishable key before running the app. Also the Gemini API Key whenever that is implemented. The home page reads authenticated tasks
-and subtasks from the `tasks` and `subtasks` tables. Row-level security means
-users must be signed in before their tasks can be loaded.
+Copy `.env.example` to `.env.local` and add the Supabase URL and publishable
+key before running the app. The home and progress pages read authenticated
+tasks and subtasks from the `tasks` and `subtasks` tables. Row-level security
+means users must be signed in before their tasks can be loaded.
 
 ## Pages
 
 - `/` shows upcoming tasks and subtasks.
-- `/progress` shows progress tracks for the signed-in user's non-completed
-  tasks. It reads tasks and subtasks from Supabase; the home page owns the
-  subtask interaction. Add the finish-line image at
-  `public/images/finish-flag.png` to replace the placeholder.
+- `/tasks` shows all tasks, lets signed-in users create tasks with ordered
+  subtasks and a selected avatar, and lets them update completion. Gemini
+  generation is not connected; subtasks can be entered and reordered manually.
+- `/progress` shows progress tracks from Supabase. It displays completed
+  subtasks but does not change them; the task screen owns that interaction.
+  Dismissing a finished track is saved in browser storage for the signed-in
+  user. Add the finish-line image at `public/images/finish-flag.png` to replace
+  its placeholder.
 
 ## Getting Started
 

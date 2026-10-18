@@ -191,6 +191,14 @@ export default function Home() {
           >
             Upcoming Tasks
           </h1>
+          <div className="mt-3">
+            <Link
+              href="/tasks"
+              className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-bold text-royal-blue transition hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
+            >
+              View all tasks
+            </Link>
+          </div>
 
           <div className="mt-5 space-y-4 text-left">
             {loading && <EmptyState>Loading your tasks...</EmptyState>}
@@ -289,6 +297,13 @@ export default function Home() {
           >
             <span aria-hidden="true" className="text-2xl leading-5">⌂</span>
             Home
+          </Link>
+          <Link
+            href="/tasks"
+            className="flex min-h-11 min-w-20 flex-col items-center justify-center gap-1 rounded-2xl px-5 text-sm font-bold text-charcoal/70 transition hover:bg-sky-blue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
+          >
+            <span aria-hidden="true" className="text-2xl leading-5">✓</span>
+            Tasks
           </Link>
           <Link
             href="/progress"
