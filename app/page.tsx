@@ -4,11 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-<<<<<<< HEAD
 import ProfileNavLink from "@/components/ProfileNavLink";
-=======
 import ProgressFlagIcon from "./components/ProgressFlagIcon";
->>>>>>> origin/main
 import { createClient } from "@/lib/supabase";
 
 type Subtask = {
