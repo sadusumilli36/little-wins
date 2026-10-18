@@ -21,108 +21,6 @@ export default function ProgressPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [finishedQueue, setFinishedQueue] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [retry, setRetry] = useState(0);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadTasks() {
-      const supabase = createClient();
-      if (!supabase) {
-        setError("Supabase is not configured yet.");
-        setLoading(false);
-        return;
-      }
-
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-
-      if (!active) return;
-      if (authError) {
-        setError(authError.message);
-        setLoading(false);
-        return;
-      }
-      if (!user) {
-        router.replace("/auth");
-        return;
-      }
-
-      const storageKey = `little-wins:progress-dismissed:${user.id}`;
-      let dismissedTaskIds: string[];
-      try {
-        const savedDismissals = window.localStorage.getItem(storageKey);
-        const parsed: unknown = savedDismissals
-          ? JSON.parse(savedDismissals)
-          : [];
-        if (
-          !Array.isArray(parsed) ||
-          !parsed.every((taskId): taskId is string => typeof taskId === "string")
-        ) {
-          throw new Error("Saved progress dismissals have an invalid format.");
-        }
-        dismissedTaskIds = parsed;
-      } catch (storageError) {
-        setError(
-          `Could not read saved progress dismissals: ${
-            storageError instanceof Error
-              ? storageError.message
-              : "browser storage is unavailable"
-          }`,
-        );
-        setLoading(false);
-        return;
-      }
-
-      const { data, error: queryError } = await supabase
-        .from("tasks")
-        .select(
-          "id, name, character_id, character_color, subtasks(id, description, completed, display_order)",
-        )
-        .order("created_at", { ascending: true });
-
-      if (!active) return;
-      if (queryError) {
-        setError(queryError.message);
-        setLoading(false);
-        return;
-      }
-
-      setUserId(user.id);
-      setDismissed(dismissedTaskIds);
-      setTasks(
-        (data ?? []).map((task) => ({
-          id: task.id,
-          name: task.name,
-          characterId: task.character_id,
-          characterColor: task.character_color,
-          subtasks: task.subtasks
-            .slice()
-            .sort((a, b) => a.display_order - b.display_order),
-        })),
-      );
-      setError(null);
-      setLoading(false);
-    }
-
-    void loadTasks();
-    const refreshWhenVisible = () => {
-      if (document.visibilityState === "visible") void loadTasks();
-    };
-    window.addEventListener("focus", refreshWhenVisible);
-    document.addEventListener("visibilitychange", refreshWhenVisible);
-
-    return () => {
-      active = false;
-      window.removeEventListener("focus", refreshWhenVisible);
-      document.removeEventListener("visibilitychange", refreshWhenVisible);
-    };
-  }, [retry, router]);
 
   useEffect(() => {
     async function loadProgress() {
@@ -195,26 +93,8 @@ export default function ProgressPage() {
 
   const closePopup = () => {
     if (!finishedTask) return;
-    const nextDismissed = [...new Set([...dismissed, finishedTask.id])];
-    setDismissed(nextDismissed);
+    setDismissed((current) => [...current, finishedTask.id]);
     setFinishedQueue((queue) => queue.slice(1));
-
-    if (!userId) return;
-    try {
-      window.localStorage.setItem(
-        `little-wins:progress-dismissed:${userId}`,
-        JSON.stringify(nextDismissed),
-      );
-      setNotice(null);
-    } catch (storageError) {
-      setNotice(
-        `The track was hidden for now, but its dismissal could not be saved: ${
-          storageError instanceof Error
-            ? storageError.message
-            : "browser storage is unavailable"
-        }`,
-      );
-    }
   };
 
   return (
