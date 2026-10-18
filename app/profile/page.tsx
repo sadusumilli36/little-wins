@@ -27,9 +27,11 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [isSetup, setIsSetup] = useState(false);
 
   useEffect(() => {
     let active = true;
+    setIsSetup(new URLSearchParams(window.location.search).get("setup") === "1");
 
     async function loadProfile() {
       const supabase = createClient();
@@ -125,8 +127,21 @@ export default function ProfilePage() {
       setContactName((value) => value.trim());
       setContactEmail((value) => value.trim());
       setMessage("Saved! Your profile is up to date.");
+      if (isSetup) {
+        router.replace("/");
+        return;
+      }
     }
     setSaving(false);
+  }
+
+  function skipSetup() {
+    try {
+      window.sessionStorage.setItem("lw-profile-setup-skipped", "1");
+    } catch {
+      // Storage can be unavailable; skipping still works for this visit.
+    }
+    router.replace("/");
   }
 
   return (
@@ -137,7 +152,9 @@ export default function ProfilePage() {
             Settings &amp; Profile
           </h1>
           <p className="mt-3 text-charcoal/75">
-            Tell us a little about you.
+            {isSetup
+              ? "Welcome to Little Wins! Let's set up your profile."
+              : "Tell us a little about you."}
           </p>
         </header>
 
@@ -247,6 +264,15 @@ export default function ProfilePage() {
               >
                 {saving ? "Saving..." : "Save"}
               </button>
+              {isSetup && (
+                <button
+                  type="button"
+                  onClick={skipSetup}
+                  className="block w-full text-center text-sm font-bold text-royal-blue underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
+                >
+                  Skip for now
+                </button>
+              )}
             </form>
           )}
         </section>
