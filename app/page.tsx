@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase";
 
@@ -21,6 +22,7 @@ type Task = {
 };
 
 export default function Home() {
+  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,8 +54,7 @@ export default function Home() {
       }
 
       if (!user) {
-        setMessage("Sign in to see your tasks.");
-        setLoading(false);
+        router.replace("/auth");
         return;
       }
 
@@ -73,7 +74,24 @@ export default function Home() {
     }
 
     void loadTasks();
-  }, []);
+  }, [router]);
+
+  async function signOut() {
+    const supabase = createClient();
+    if (!supabase) {
+      setMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    router.replace("/auth");
+    router.refresh();
+  }
 
   const upcomingTasks = useMemo(
     () => tasks.filter((task) => task.status !== "completed"),
@@ -157,6 +175,13 @@ export default function Home() {
             priority
             className="h-auto w-[570px] max-w-full"
           />
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="min-h-11 rounded-full bg-white px-5 py-2 text-sm font-bold text-royal-blue shadow-sm transition hover:bg-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
+          >
+            Log out
+          </button>
         </header>
 
         <section
