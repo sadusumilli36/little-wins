@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Avatar, { AVATARS, type AvatarId, getAvatar } from "@/components/Avatar";
+import ProfileNavLink from "@/components/ProfileNavLink";
 import { createClient } from "@/lib/supabase";
 
 type Subtask = {
@@ -838,6 +839,7 @@ function PrimaryNavigation() {
           <span aria-hidden="true" className="text-2xl leading-5">●</span>
           Progress
         </Link>
+        <ProfileNavLink />
       </div>
     </nav>
   );

@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import ProfileNavLink from "@/components/ProfileNavLink";
 import { createClient } from "@/lib/supabase";
 
 type Subtask = {
@@ -351,6 +352,7 @@ export default function Home() {
             <span aria-hidden="true" className="text-2xl leading-5">●</span>
             Progress
           </Link>
+          <ProfileNavLink />
         </div>
       </nav>
     </main>

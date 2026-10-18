@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import ProfileNavLink from "@/components/ProfileNavLink";
 import { createClient } from "@/lib/supabase";
 import ProgressTrack from "./ProgressTrack";
 import type { SubtaskProgress, TaskProgress } from "./progress-types";
@@ -231,6 +232,7 @@ export default function ProgressPage() {
             <span aria-hidden="true" className="text-2xl leading-5">●</span>
             Progress
           </Link>
+          <ProfileNavLink />
         </div>
       </nav>
 
