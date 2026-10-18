@@ -7,6 +7,15 @@ publishable key before running the app. Also the Gemini API Key whenever that is
 and subtasks from the `tasks` and `subtasks` tables. Row-level security means
 users must be signed in before their tasks can be loaded.
 
+## Pages
+
+- `/` shows upcoming tasks and subtasks.
+- `/progress` previews task progress tracks with mock data. The page displays
+  completed subtasks but does not change them; the other task screen owns that
+  interaction. Replace `app/progress/progress-mock.ts` with backend data when it
+  is ready. Add the finish-line image at
+  `public/images/finish-flag.png` to replace the placeholder.
+
 ## Getting Started
 
 First, run the development server:

@@ -257,7 +257,7 @@ export default function Home() {
         aria-label="Primary navigation"
         className="fixed inset-x-0 bottom-0 border-t border-charcoal/10 bg-white/95 shadow-[0_-4px_16px_rgba(41,45,50,0.08)] backdrop-blur"
       >
-        <div className="mx-auto flex max-w-2xl justify-start px-5 py-3">
+        <div className="mx-auto flex max-w-2xl justify-start gap-2 px-5 py-3">
           <Link
             href="/"
             aria-current="page"
@@ -265,6 +265,13 @@ export default function Home() {
           >
             <span aria-hidden="true" className="text-2xl leading-5">⌂</span>
             Home
+          </Link>
+          <Link
+            href="/progress"
+            className="flex min-h-11 min-w-20 flex-col items-center justify-center gap-1 rounded-2xl px-5 text-sm font-bold text-charcoal/70 transition hover:bg-sky-blue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
+          >
+            <span aria-hidden="true" className="text-2xl leading-5">●</span>
+            Progress
           </Link>
         </div>
       </nav>
