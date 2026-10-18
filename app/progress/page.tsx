@@ -1,16 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import ProgressTrack from "./ProgressTrack";
-import type { TaskProgress } from "./ProgressTrack";
+import type { SubtaskProgress, TaskProgress } from "./progress-types";
+
+type SupabaseTask = {
+  id: string;
+  name: string;
+  character_id: string | null;
+  subtasks: SubtaskProgress[];
+};
 
 export default function ProgressPage() {
   const router = useRouter();
   const [tasks, setTasks] = useState<TaskProgress[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [finishedQueue, setFinishedQueue] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,6 +124,64 @@ export default function ProgressPage() {
     };
   }, [retry, router]);
 
+  useEffect(() => {
+    async function loadProgress() {
+      const supabase = createClient();
+
+      if (!supabase) {
+        setMessage("Supabase is not configured yet.");
+        setLoading(false);
+        return;
+      }
+
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError && authError.name !== "AuthSessionMissingError") {
+        setMessage(
+          authError.message,
+        );
+        setLoading(false);
+        return;
+      }
+
+      if (!user) {
+        router.replace("/auth");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("id, name, character_id, subtasks(id, description, completed, display_order)")
+        .neq("status", "completed")
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        setMessage(error.message);
+      } else {
+        const progressTasks = ((data ?? []) as SupabaseTask[]).map((task) => ({
+          id: task.id,
+          name: task.name,
+          characterName: task.character_id
+            ? task.character_id.replaceAll("-", " ")
+            : "Little Wins",
+          characterImage: task.character_id
+            ? `/characters/${task.character_id}.png`
+            : "/characters/default.png",
+          subtasks: task.subtasks
+            .slice()
+            .sort((a, b) => a.display_order - b.display_order),
+        }));
+        setTasks(progressTasks);
+      }
+      setLoading(false);
+    }
+
+    void loadProgress();
+  }, [router]);
+
   const handleFinish = useCallback((taskId: string) => {
     setFinishedQueue((queue) =>
       queue.includes(taskId) ? queue : [...queue, taskId],
@@ -123,7 +189,9 @@ export default function ProgressPage() {
   }, []);
 
   const finishedTask = tasks.find((task) => task.id === finishedQueue[0]);
-  const visibleTasks = tasks.filter((task) => !dismissed.includes(task.id));
+  const visibleTasks = tasks.filter(
+    (task) => !dismissed.includes(task.id),
+  );
 
   const closePopup = () => {
     if (!finishedTask) return;
@@ -165,40 +233,27 @@ export default function ProgressPage() {
           aria-label="Task progress tracks"
           className="mx-auto mt-8 flex max-w-xl flex-col gap-8"
         >
+          {visibleTasks.map((task) => (
+            <ProgressTrack
+              key={task.id}
+              task={task}
+              onFinish={handleFinish}
+            />
+          ))}
+
           {loading && (
-            <p role="status" className="rounded-3xl bg-white px-5 py-8 text-center shadow-sm">
-              Loading your task progress...
-            </p>
-          )}
-          {!loading && error && (
-            <div role="alert" className="rounded-3xl bg-white px-5 py-6 text-center shadow-sm">
-              <p>{error}</p>
-              <button
-                type="button"
-                onClick={() => setRetry((current) => current + 1)}
-                className="mt-4 min-h-11 rounded-full bg-royal-blue px-5 py-2 font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal-blue"
-              >
-                Try again
-              </button>
-            </div>
-          )}
-          {!loading &&
-            !error &&
-            visibleTasks.map((task) => (
-              <ProgressTrack
-                key={task.id}
-                task={task}
-                onFinish={handleFinish}
-              />
-            ))}
-
-          {notice && (
-            <p role="status" className="rounded-2xl bg-white px-4 py-3 text-center text-sm">
-              {notice}
+            <p className="rounded-3xl bg-white px-5 py-8 text-center text-base shadow-sm">
+              Loading your progress...
             </p>
           )}
 
-          {!loading && !error && visibleTasks.length === 0 && (
+          {!loading && message && (
+            <p className="rounded-3xl bg-white px-5 py-8 text-center text-base shadow-sm">
+              {message}
+            </p>
+          )}
+
+          {!loading && !message && visibleTasks.length === 0 && (
             <p className="rounded-3xl bg-white px-5 py-8 text-center text-base shadow-sm">
               No tracks right now. Add a task to start a new one.
             </p>
@@ -208,7 +263,7 @@ export default function ProgressPage() {
 
       <nav
         aria-label="Primary navigation"
-        className="fixed inset-x-0 bottom-0 border-t border-charcoal/10 bg-white/95 shadow-[0_-4px_16px_rgba(41,45,50,0.08)] backdrop-blur"
+        className="fixed inset-x-0 bottom-0 border-t border-charcoal/10 bg-white shadow-[0_-4px_16px_rgba(41,45,50,0.08)]"
       >
         <div className="mx-auto flex max-w-2xl justify-start gap-2 px-5 py-3">
           <Link

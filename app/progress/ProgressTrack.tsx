@@ -2,20 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import Avatar, { getAvatar } from "@/components/Avatar";
-
-export type TaskProgress = {
-  id: string;
-  name: string;
-  characterId: string | null;
-  characterColor: string | null;
-  subtasks: {
-    id: string;
-    description: string;
-    completed: boolean;
-    display_order: number;
-  }[];
-};
+import type { TaskProgress } from "./progress-types";
 
 const FLAG_SRC = "/images/finish-flag.png";
 const CHARCOAL = "#292d32";
