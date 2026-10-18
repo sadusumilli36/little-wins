@@ -8,7 +8,7 @@ export type SubtaskProgress = {
 export type TaskProgress = {
   id: string;
   name: string;
-  characterName: string;
-  characterImage: string;
+  characterId: string | null;
+  characterColor: string | null;
   subtasks: SubtaskProgress[];
 };

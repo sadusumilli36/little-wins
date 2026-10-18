@@ -484,7 +484,7 @@ function TaskSection({
                 <Avatar
                   id={avatar.id}
                   label={`${avatar.name} avatar`}
-                  className="mt-0.5 size-12 shrink-0 rounded-full"
+                  className="mt-0.5 size-12 shrink-0"
                 />
                 <div className="min-w-0 flex-1">
                   <h3
@@ -709,16 +709,12 @@ function NewTaskDialog({
                   />
                   <Avatar
                     id={avatar.id}
-                    className="size-12 rounded-full"
+                    className="size-12"
                   />
                   {avatar.name}
                 </label>
               ))}
             </div>
-            <p className="mt-2 text-xs text-charcoal/65">
-              These illustrated buddies are placeholders; avatar photos can be
-              added later.
-            </p>
           </fieldset>
 
           <fieldset>
